@@ -1,72 +1,100 @@
-## 1. Start the Infrastructure
+ Validation Instructions for Kubernetes Deployment
 
-# For starting all the resources, you should use in Terminal:
+## 1. Create the Kubernetes Cluster
 
-```bash
-chmod 777 bootstrap.sh ./bootstrap.sh
-```
+Use the provided kind config `cluster.yml` to create the cluster before applying any manifests:
 
-This script will apply all manifests (MySQL, App, RBAC..)
+kind create cluster --config cluster.yml
 
-## 2. Check the created resources
 
-# Check the Namespaces
+Optionally, you can delete the cluster after testing with:
 
-```bash
+kind delete cluster
+
+
+## 2. Start the Infrastructure
+
+Make the bootstrap script executable and run it to deploy all resources (MySQL, App, RBAC):
+
+chmod 777 ./bootstrap.sh
+./bootstrap.sh
+
+
+## 3. Check the Created Resources
+
+### Namespaces:
+
 kubectl get namespaces
-```
 
-The namespaces should be created: `mysql`, `todoapp`
 
-# Check the ConfigMaps and Secrets
+Verify namespaces `mysql` and `todoapp` are created.
 
-```bash
+### ConfigMaps and Secrets:
+
 kubectl get configmap -n todoapp
 kubectl get secret -n todoapp
 kubectl get configmap -n mysql
 kubectl get secret -n mysql
-```
 
-# Verify PV and PVC
 
-```bash
+### Persistent Volumes and Claims:
+
 kubectl get pv
 kubectl get pvc -n todoapp
-```
 
-# Check Service and Ingress
 
-```bash
+### Services and Ingress:
+
 kubectl get svc -n mysql
 kubectl get ingress -n todoapp
-```
 
-# Check the Deployment and Pods
 
-```bash
+### Deployments and Pods:
+
 kubectl get deployment -n todoapp
 kubectl get pods -n todoapp
 kubectl get pods -n mysql
-```
 
-## 3. Check the RBAC access
+---
 
-# Verify, if ServiceAccount exists
+## 4. Check the RBAC Access
 
-```bash
+Verify the ServiceAccount exists:
+
 kubectl get sa -n todoapp
-```
 
-## 4. Test access to Secrets from pod
 
-```bash
+---
+
+## 5. Test Access to Secrets from Pod
+
+1. Get the Pod name of your todoapp:
+
+kubectl get pods -n todoapp
+
+
+
+2. Exec into the pod (replace `<pod-name>`):
+
 kubectl exec -it <pod-name> -n todoapp -- sh
-```
 
-And execute:
 
-```bash
+3. Inside the pod, run:
+
 TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
 CACERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 curl --cacert $CACERT --header "Authorization: Bearer $TOKEN" https://kubernetes.default.svc/api/v1/namespaces/todoapp/secrets
-```
+
+
+
+**Note:**  
+- Confirm your container image `ikulyk404/todoapp:4.0.1` includes `curl`.  
+- If `curl` is missing, use a sidecar container with image `curlimages/curl:latest` or run an ephemeral pod with curl for testing:
+
+kubectl run -n todoapp curl --image=curlimages/curl:latest -it --rm -- sh
+
+
+
+and then run the `curl` command inside this pod with the mounted ServiceAccount.
+
+---
